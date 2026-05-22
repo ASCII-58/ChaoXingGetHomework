@@ -1,0 +1,23 @@
+{
+  "name": "xxt",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "tauri": "npx @tauri-apps/cli dev",
+    "tauri:build": "npx @tauri-apps/cli build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.5.2"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "@tauri-apps/cli": "^1.5.11",
+    "vite": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

@@ -4,10 +4,15 @@
 
 Desktop GUI app (JS) that fetches all Chaoxing (超星学习通) homework and provides native OS desktop notifications 24 hours and 1 hour before homework due dates. The reverse-engineered API is documented in `API.md`.
 
+## Direction
+
+- **Packaging**: Prefer Rust-based packaging via Tauri (Rust backend + JS frontend).
+- **Session scope**: Each session focuses on a single module only.
+
 ## Project Initialization
 
 - **TDD**: Write tests first for every feature. No tests exist yet — if the project is empty, initialize the project and set up the build, test, lint, and GUI frameworks. If files already exist, skip initialization and implement the next feature.
-- **Framework selection**: You must choose and document a specific JS desktop framework (for example, Electron with Node.js) before proceeding.
+- **Framework selection**: Prefer Tauri (Rust) for packaging; document any alternative if chosen.
 
 ## Architecture Rules
 

@@ -1,0 +1,10 @@
+# 忽略所有 build 目录
+build/
+**/build/
+**/build/**
+**/debug/
+**/debug/**
+# 忽略其他常见目录
+node_modules/
+dist/
+*.log
