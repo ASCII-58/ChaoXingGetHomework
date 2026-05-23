@@ -7,4 +7,5 @@ build/
 # 忽略其他常见目录
 node_modules/
 dist/
+**/release/**
 *.log

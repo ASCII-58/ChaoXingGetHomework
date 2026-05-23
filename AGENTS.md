@@ -2,30 +2,41 @@
 
 ## Project
 
-Desktop GUI app (JS) that fetches all Chaoxing (超星学习通) homework and provides native OS desktop notifications 24 hours and 1 hour before homework due dates. The reverse-engineered API is documented in `API.md`.
+Desktop GUI app (Tauri + vanilla JS) that fetches Chaoxing (超星学习通) homework and provides native OS desktop notifications before due dates. The reverse-engineered API is documented in `API.md`.
 
-## Direction
+## Commands
 
-- **Packaging**: Prefer Rust-based packaging via Tauri (Rust backend + JS frontend).
-- **Session scope**: Each session focuses on a single module only.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Vite dev server (port 5173) |
+| `npm run build` | Vite production build → `dist/` |
+| `npm test` | Run all vitest tests (node environment) |
+| `npm run lint` | ESLint (flat config) |
+| `npm run tauri` | Tauri dev window (launches Vite + desktop app) |
+| `npm run tauri:build` | Tauri production bundle |
 
-## Project Initialization
+Run a single test file: `npx vitest run tests/login.test.js`
 
-- **TDD**: Write tests first for every feature. No tests exist yet — if the project is empty, initialize the project and set up the build, test, lint, and GUI frameworks. If files already exist, skip initialization and implement the next feature.
-- **Framework selection**: Prefer Tauri (Rust) for packaging; document any alternative if chosen.
+## Architecture
 
-## Architecture Rules
+- **Rust backend** (`src-tauri/src/main.rs`): All HTTP calls to Chaoxing happen here via `reqwest`. Tauri commands: `login_with_password`, `fetch_course_list`, `fetch_homework_list`, `check_session`, `resolve_task_url`, plus config/data persistence.
+- **JS frontend** (`src/`): Vanilla JS (no framework). Hash-based SPA routing (`src/router.js`). Calls Tauri backend through `src/tauri-login.js` — a thin wrapper around `@tauri-apps/api/invoke` that rejects with an error in browser environments.
+- **Login crypto exists in two places**: `src/login.js` (JS, for unit testing) and `src-tauri/src/main.rs` (Rust, for production). Both implement the same AES-128-CBC encryption with key `u2oh6Vu^HWe4_AES`. The Rust version is the authoritative one; the JS copy exists only so login tests don't need Tauri.
+- **Frontend files TOUCHED BY REQUIREMENTS**: `index.html`, `src/style.css`, `src/main.js`. Files explicitly **NOT** to modify: `src/tauri-login.js`, `src/router.js`, `src/homework.js`, `tests/`, Rust backend. See `REQUIREMENTS.md` for the current frontend rewrite spec.
+- **Config storage**: Rust persists to `dirs::data_dir()/xxt/config.json` and `data.json`. The JS `appState` mirrors this on startup via `loadConfig()`/`loadData()`.
 
-- **Primary specification**: `API.md`. All implementation code should build against this spec and be added at the repo root.
-- **Code conventions**: The `karpathy-guidelines` skill (`.opencode/skills/karpathy-guidelines/`) is loaded and should be referenced when writing/refactoring code.
-- **`.opencode/.gitignore`** ignores `node_modules`, `package.json`, `package-lock.json`, `bun.lock` — these are workspace-internal files, not repo-level config. Keep userland code at the repo root.
-- **Single commit, single branch (`main`), no remote** configured.
+## Conventions
 
-## Implementation Details (Authentication & API)
+- **TDD**: Write failing tests first, then implement.
+- **Session scope**: One module per session. Don't roam across unrelated areas.
+- **Primary spec**: `API.md` — all Chaoxing API logic must conform to it.
+- **Code style**: Follow the karpathy-guidelines skill (`.opencode/skills/karpathy-guidelines/`).
+- **Git**: Single commit, single branch (`main`), no remote configured.
+- **`.opencode/`**: OpenCode workspace internals. `node_modules`, `package.json`, `package-lock.json`, `bun.lock` inside `.opencode/` are workspace-internal, not repo-level config.
 
-- **Recommended homework endpoint**: `/work/stu-work` (cookie-only, no enc tokens). The newer `/mooc2/work/list` requires course-specific `enc` tokens which are hard to obtain programmatically. See `API.md §3.1`.
-- **Course page redirect**: Use `/visit/stucoursemiddle?courseid=X&clazzid=Y&cpi=Z&ismooc2=1&v=2` — redirects to the correct `mooc2-ans` course page with `enc` generated server-side. No `enc` token needed up front. See `API.md §2.4`.
-- **Login**: AES-128-CBC with key `u2oh6Vu^HWe4_AES` (same for IV), PKCS7, Base64 output. Both phone AND password are encrypted.
-- **Authentication handling**: If the user provides invalid credentials or the `/work/stu-work` endpoint returns an authentication error, the UI must prompt the user to re-enter their phone and password.
+## API Quirks
 
-Your current task is to act as the first agent: evaluate the workspace, select the JS build and GUI frameworks, initialize the codebase at the repo root if needed, and write the first failing test for the Login function.
+- **Homework endpoint**: Use `/work/stu-work` (cookie-only). The newer `/mooc2/work/list` requires course-specific `enc` tokens that are hard to get programmatically. See `API.md §3.1`.
+- **Course page redirect**: `/visit/stucoursemiddle?courseid=X&clazzid=Y&cpi=Z&ismooc2=1&v=2` — generates `enc` server-side via 302 redirect. No `enc` needed up front. See `API.md §2.4`.
+- **Login**: AES-128-CBC, key+IV both `u2oh6Vu^HWe4_AES`, PKCS7, Base64. Both phone AND password are encrypted.
+- **Auth errors**: If credentials are wrong or `/work/stu-work` returns a login redirect, the UI must prompt the user to re-enter phone + password.
