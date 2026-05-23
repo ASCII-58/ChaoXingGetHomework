@@ -268,6 +268,30 @@ GET https://mooc1.chaoxing.com/mycourse/transfer
 `openc` parameters appended. The `enc` token is NOT in the redirect URL; it is
 generated server-side when the target page loads.
 
+### 2.4 Course Middle Redirect
+
+A simpler redirect endpoint that accepts course identifiers and forwards
+the browser to the correct course page (which then generates the `enc` token).
+
+```
+GET https://mooc1.chaoxing.com/visit/stucoursemiddle
+```
+
+**Query parameters:**
+
+| Parameter | Value |
+|---|---|
+| `courseid` | Course ID |
+| `clazzid` | Class ID |
+| `cpi` | Course-person identifier (from course list API) |
+| `ismooc2` | `1` (enables mooc2 redirect) |
+| `v` | `2` (version) |
+
+**Response (302 redirect):** Redirects to the full course page on
+`mooc2-ans.chaoxing.com` with `enc` generated server-side. This is the
+recommended way to programmatically construct a course page URL, as it
+requires no `enc` token — the server handles the generation.
+
 ---
 
 ## 3. Homework
@@ -535,13 +559,14 @@ Example: `341133751`.
 | 3 | `/fanya/login` | POST | Deprecated | AES(phone) only | JSON (blocked by IP) |
 | 4 | `/mycourse/backclazzdata` | GET | Active | Cookie | JSON (course list) |
 | 5 | `/mycourse/transfer` | GET | Active | Cookie | 302 redirect (openc in URL) |
-| 6 | `/mooc2-ans/mycourse/stu` | GET | Active | Cookie + enc | HTML (course page) |
-| 7 | `/work/stu-work` | GET | Active | Cookie | HTML (homework list) |
-| 8 | `/mooc2/work/list` | GET | Active | Cookie + enc | HTML (homework page) |
-| 9 | `/work/getAllWork` | GET | Active | Cookie + enc | HTML (homework data) |
-| 10 | `/job/work` | GET | **404** | — | Endpoint removed |
-| 11 | `/mooc-ans/mooc2/work/task` | GET | Active | Cookie + enc | HTML (homework detail) |
-| 12 | `/mooc-ans/mooc2/work/answer-list` | GET | Active | Cookie + enc | HTML (answer history) |
+| 6 | `/visit/stucoursemiddle` | GET | Active | Cookie | 302 redirect (course page) |
+| 7 | `/mooc2-ans/mycourse/stu` | GET | Active | Cookie + enc | HTML (course page) |
+| 8 | `/work/stu-work` | GET | Active | Cookie | HTML (homework list) |
+| 9 | `/mooc2/work/list` | GET | Active | Cookie + enc | HTML (homework page) |
+| 10 | `/work/getAllWork` | GET | Active | Cookie + enc | HTML (homework data) |
+| 11 | `/job/work` | GET | **404** | — | Endpoint removed |
+| 12 | `/mooc-ans/mooc2/work/task` | GET | Active | Cookie + enc | HTML (homework detail) |
+| 13 | `/mooc-ans/mooc2/work/answer-list` | GET | Active | Cookie + enc | HTML (answer history) |
 
 ---
 

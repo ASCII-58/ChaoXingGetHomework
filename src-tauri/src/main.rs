@@ -50,6 +50,19 @@ struct CourseInfo {
   role_type: i32,
 }
 
+#[derive(Serialize, Clone)]
+struct HomeworkItem {
+  title: String,
+  status_label: String,
+  status_code: String,
+  course_name: String,
+  deadline: String,
+  task_url: String,
+  unread: bool,
+  course_id: i64,
+  class_id: i64,
+}
+
 fn encrypt(value: &str) -> String {
   let key = AES_KEY.as_bytes();
   let iv = AES_KEY.as_bytes();
@@ -346,6 +359,270 @@ async fn fetch_course_list(state: State<'_, AppState>) -> Result<Vec<CourseInfo>
   Ok(courses)
 }
 
+fn status_code(label: &str) -> &str {
+  match label {
+    "已完成" | "已批阅" | "待批阅" => "Completed",
+    "未提交" | "未交" | "已提交" => "Pending",
+    "已截止" => "Overdue",
+    _ => "Unknown",
+  }
+}
+
+#[tauri::command]
+async fn fetch_homework_list(state: State<'_, AppState>) -> Result<Vec<HomeworkItem>, String> {
+  let cookie = {
+    let guard = state.cookie_string.lock().map_err(|_| "lock_failed")?;
+    guard.clone().ok_or("no_cookie".to_string())?
+  };
+
+  let client = reqwest::Client::builder()
+    .user_agent(USER_AGENT)
+    .build()
+    .map_err(|error| error.to_string())?;
+
+  let response = client
+    .get("https://mooc1.chaoxing.com/work/stu-work?ut=s")
+    .header("Cookie", &cookie)
+    .send()
+    .await
+    .map_err(|error| error.to_string())?;
+
+  let url = response.url().to_string();
+  let html = response.text().await.map_err(|error| error.to_string())?;
+  if is_session_expired(&url, &html) {
+    return Err("cookie_expired".to_string());
+  }
+
+  let li_re = regex::Regex::new(r"(?s)<li\b[^>]*goTask[^>]*>(.*?)</li>")
+    .map_err(|e| e.to_string())?;
+  let data_re = regex::Regex::new(r#"data\s*=\s*"([^"]*)""#)
+    .map_err(|e| e.to_string())?;
+  let p_re = regex::Regex::new(r"<p\b[^>]*>([^<]*)</p>")
+    .map_err(|e| e.to_string())?;
+  let status_re = regex::Regex::new(r"(?s)<p\b[^>]*>.*?</p>\s*<span[^>]*>([^《<]*)</span>")
+    .map_err(|e| e.to_string())?;
+  let course_re = regex::Regex::new(r"《([^》]*)》")
+    .map_err(|e| e.to_string())?;
+  let deadline_re = regex::Regex::new(
+    r#"<span\b[^>]*class\s*=\s*"[^"]*\bfr\b[^"]*"[^>]*>([^<]*)</span>"#,
+  )
+  .map_err(|e| e.to_string())?;
+
+    let course_id_re = regex::Regex::new(r"courseId=(\d+)")
+      .map_err(|e| e.to_string())?;
+    let class_id_re = regex::Regex::new(r"clazzId=(\d+)")
+      .map_err(|e| e.to_string())?;
+
+  let mut items = Vec::new();
+  for caps in li_re.captures_iter(&html) {
+    let full = caps.get(0).map(|m| m.as_str()).unwrap_or("");
+    let inner = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+
+    let task_url = data_re
+      .captures(full)
+      .and_then(|c| c.get(1))
+      .map(|m| m.as_str().to_string())
+      .unwrap_or_default();
+
+    let title = p_re
+      .captures(inner)
+      .and_then(|c| c.get(1))
+      .map(|m| m.as_str().to_string())
+      .unwrap_or_default();
+
+    let status_label = status_re
+      .captures(inner)
+      .and_then(|c| c.get(1))
+      .map(|m| m.as_str().to_string())
+      .unwrap_or_default();
+
+    let course_name = course_re
+      .captures(inner)
+      .and_then(|c| c.get(1))
+      .map(|m| m.as_str().to_string())
+      .unwrap_or_default();
+
+    let deadline = deadline_re
+      .captures(inner)
+      .and_then(|c| c.get(1))
+      .map(|m| m.as_str().to_string())
+      .unwrap_or_default();
+
+    let unread = full.contains("redPoint");
+
+    let course_id: i64 = course_id_re
+      .captures(&task_url)
+      .and_then(|c| c.get(1))
+      .and_then(|m| m.as_str().parse().ok())
+      .unwrap_or(0);
+
+    let class_id: i64 = class_id_re
+      .captures(&task_url)
+      .and_then(|c| c.get(1))
+      .and_then(|m| m.as_str().parse().ok())
+      .unwrap_or(0);
+
+    items.push(HomeworkItem {
+      title,
+      status_label: status_label.clone(),
+      status_code: status_code(&status_label).to_string(),
+      course_name,
+      deadline,
+      task_url,
+      unread,
+      course_id,
+      class_id,
+    });
+  }
+
+  Ok(items)
+}
+
+#[tauri::command]
+async fn resolve_task_url(
+  task_url: String,
+  state: State<'_, AppState>,
+) -> Result<String, String> {
+  let cookie = {
+    let guard = state.cookie_string.lock().map_err(|_| "lock_failed")?;
+    guard.clone().ok_or("no_cookie".to_string())?
+  };
+
+  let client = reqwest::Client::builder()
+    .user_agent(USER_AGENT)
+    .build()
+    .map_err(|error| error.to_string())?;
+
+  let response = client
+    .get(&task_url)
+    .header("Cookie", &cookie)
+    .header("Referer", "https://mooc1.chaoxing.com/work/stu-work?ut=s")
+    .send()
+    .await
+    .map_err(|error| error.to_string())?;
+
+  let status = response.status();
+  let final_url = response.url().to_string();
+  let html = response.text().await.map_err(|error| error.to_string())?;
+
+  if !status.is_success() {
+    return Err(format!("backend_http_{}_final_{}", status.as_u16(), final_url));
+  }
+
+  // 1) look for any form action or link with dowork/work/task
+  let path_re =
+    regex::Regex::new(r#"action="([^"]+)"|<a\s[^>]*href="([^"]+)"|<form[^>]+action="([^"]+)"#)
+      .map_err(|e| e.to_string())?;
+  for caps in path_re.captures_iter(&html) {
+    for i in 1..=3 {
+      if let Some(m) = caps.get(i) {
+        let val = m.as_str();
+        if val.contains("dowork") || val.contains("work/task") {
+          let url = if val.starts_with("http") {
+            val.to_string()
+          } else if val.starts_with("/") {
+            format!("https://mooc1.chaoxing.com{}", val)
+          } else {
+            format!("https://mooc1.chaoxing.com/{}", val)
+          };
+          return Ok(url);
+        }
+      }
+    }
+  }
+
+  // 2) search HTML for an `enc` hex token near enc/standardEnc
+  let token_re = regex::Regex::new(r#"(?:enc|standardEnc)\s*[:=]\s*["']?([0-9a-f]{32})"#)
+    .map_err(|e| e.to_string())?;
+  let token_opt = token_re.captures(&html).and_then(|c| c.get(1));
+
+  if let Some(tok) = token_opt {
+    let token = tok.as_str();
+    let tid_re = regex::Regex::new(r"(?:taskrefId|workId)=(\d+)")
+      .map_err(|e| e.to_string())?;
+    let tid = tid_re
+      .captures(&task_url)
+      .and_then(|c| c.get(1))
+      .or_else(|| tid_re.captures(&final_url).and_then(|c| c.get(1)))
+      .or_else(|| tid_re.captures(&html).and_then(|c| c.get(1)))
+      .map(|m| m.as_str())
+      .unwrap_or("0");
+    let cid_re = regex::Regex::new(r"courseId=(\d+)").map_err(|e| e.to_string())?;
+    let cid = cid_re
+      .captures(&final_url)
+      .and_then(|c| c.get(1))
+      .or_else(|| cid_re.captures(&html).and_then(|c| c.get(1)))
+      .map(|m| m.as_str())
+      .unwrap_or("0");
+    let clid_re = regex::Regex::new(r"classId=(\d+)").map_err(|e| e.to_string())?;
+    let clid = clid_re
+      .captures(&final_url)
+      .and_then(|c| c.get(1))
+      .or_else(|| clid_re.captures(&html).and_then(|c| c.get(1)))
+      .map(|m| m.as_str())
+      .unwrap_or("0");
+    let cpi_re = regex::Regex::new(r"cpi=(\d+)").map_err(|e| e.to_string())?;
+    let cpi = cpi_re
+      .captures(&final_url)
+      .and_then(|c| c.get(1))
+      .map(|m| m.as_str())
+      .unwrap_or("0");
+
+    return Ok(format!(
+      "https://mooc1.chaoxing.com/mooc-ans/mooc2/work/dowork?courseId={}&classId={}&cpi={}&workId={}&answerId=0&enc={}",
+      cid, clid, cpi, tid, token
+    ));
+  }
+
+  // 3) fallback – phone page is viewable in browser
+  Ok(final_url)
+}
+
+fn default_data_path() -> Result<PathBuf, String> {
+  let base = dirs::data_dir().ok_or("no_data_dir")?;
+  Ok(base.join("xxt").join("data.json"))
+}
+
+fn resolve_data_path(config: &StoredConfig) -> Result<PathBuf, String> {
+  match &config.data_path {
+    Some(p) if !p.is_empty() => Ok(PathBuf::from(p)),
+    _ => default_data_path(),
+  }
+}
+
+#[tauri::command]
+async fn save_config_state(config: StoredConfig, state: State<'_, AppState>) -> Result<(), String> {
+  {
+    let mut guard = state.cookie_string.lock().map_err(|_| "lock_failed")?;
+    *guard = config.cookie.clone();
+  }
+  save_config(&state.storage_path, &config)?;
+  Ok(())
+}
+
+#[tauri::command]
+async fn load_data_state(state: State<'_, AppState>) -> Result<StoredData, String> {
+  let config = load_config(&state.storage_path);
+  let data_path = resolve_data_path(&config)?;
+  if let Ok(content) = fs::read_to_string(&data_path) {
+    Ok(serde_json::from_str(&content).unwrap_or_default())
+  } else {
+    Ok(StoredData::default())
+  }
+}
+
+#[tauri::command]
+async fn save_data_state(data: StoredData, state: State<'_, AppState>) -> Result<(), String> {
+  let config = load_config(&state.storage_path);
+  let data_path = resolve_data_path(&config)?;
+  if let Some(parent) = data_path.parent() {
+    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+  }
+  let payload = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+  fs::write(&data_path, payload).map_err(|e| e.to_string())?;
+  Ok(())
+}
+
 fn main() {
   let storage_path = storage_path().expect("storage path");
   let config = load_config(&storage_path);
@@ -363,7 +640,12 @@ fn main() {
       check_session,
       save_phone,
       load_config_state,
+      save_config_state,
+      load_data_state,
+      save_data_state,
       fetch_course_list,
+      fetch_homework_list,
+      resolve_task_url,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
@@ -372,6 +654,15 @@ fn main() {
 struct StoredConfig {
   phone: Option<String>,
   cookie: Option<String>,
+  notifications: Option<bool>,
+  data_path: Option<String>,
+}
+
+#[derive(Serialize, serde::Deserialize, Default, Clone)]
+struct StoredData {
+  ignore_courses: Option<Vec<i64>>,
+  ignore_homework: Option<Vec<String>>,
+  notified_ids: Option<Vec<String>>,
 }
 fn storage_path() -> Result<PathBuf, String> {
   let base = dirs::data_dir().ok_or("no_data_dir")?;

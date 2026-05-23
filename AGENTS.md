@@ -24,6 +24,7 @@ Desktop GUI app (JS) that fetches all Chaoxing (超星学习通) homework and pr
 ## Implementation Details (Authentication & API)
 
 - **Recommended homework endpoint**: `/work/stu-work` (cookie-only, no enc tokens). The newer `/mooc2/work/list` requires course-specific `enc` tokens which are hard to obtain programmatically. See `API.md §3.1`.
+- **Course page redirect**: Use `/visit/stucoursemiddle?courseid=X&clazzid=Y&cpi=Z&ismooc2=1&v=2` — redirects to the correct `mooc2-ans` course page with `enc` generated server-side. No `enc` token needed up front. See `API.md §2.4`.
 - **Login**: AES-128-CBC with key `u2oh6Vu^HWe4_AES` (same for IV), PKCS7, Base64 output. Both phone AND password are encrypted.
 - **Authentication handling**: If the user provides invalid credentials or the `/work/stu-work` endpoint returns an authentication error, the UI must prompt the user to re-enter their phone and password.
 

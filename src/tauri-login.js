@@ -25,4 +25,13 @@ export const savePhone = (phone) => safeInvoke("save_phone", { phone });
 export const loadConfig = () =>
   isTauri() ? invoke("load_config_state") : Promise.resolve({});
 
+export const saveConfig = (config) => safeInvoke("save_config_state", { config });
+
+export const loadData = () =>
+  isTauri() ? invoke("load_data_state") : Promise.resolve({});
+
+export const saveData = (data) => safeInvoke("save_data_state", { data });
+
 export const fetchCourseList = () => safeInvoke("fetch_course_list");
+
+export const fetchHomeworkList = () => safeInvoke("fetch_homework_list");

@@ -1,0 +1,11 @@
+# 0
+
+<https://mooc1.chaoxing.com/mooc-ans/mooc2/work/dowork?courseId=261512194&classId=141999697&cpi=404944214&workId=53323890&answerId=0&standardEnc=824345f9af86d53600df60e4dbf4b91e&enc=48aa5fff229828c62f0f0582e4dc9996>
+是示例，你的打开的页面有问题,url为
+<https://mooc1.chaoxing.com/mooc-ans/work/phone/task-work?taskrefId=53501290&courseId=261512194&classId=141999697&userId=341133751&role=&source=0&enc_task=d0dad8876c336a0103977dc4a515b639&cpi=404944214&vx=0&fromGroup=0>
+，页面同<E:\Download\作业.html>点击'开始答题'报错"task-work?taskrefId=53501290&courseId=261512194&classId=141999697&userId=341133751&role=&source=0&e…:1 Failed to launch 'jsbridge://PostNotificationWithId-17' because the scheme does not have a registered handler."
+<https://mooc1.chaoxing.com/mooc-ans/mooc2/work/dowork?courseId=261512194&classId=141999697&cpi=404944214&workId=53501290&answerId=0&standardEnc=6ba5fef0f5feaa9adc71d6a38cf673d5&enc=6ba5fef0f5feaa9adc71d6a38cf673d5>
+<https://mooc1.chaoxing.com/mooc-ans/mooc2/work/dowork?courseId=261512194&classId=141999697&cpi=404944214&workId=53501290&answerId=0&standardEnc=814271fd819fb642f18377db275c44ae&enc=7d6edc9b253fe2378f3f697d07e1b291>
+<https://mooc2-ans.chaoxing.com/mooc2-ans/mycourse/stu?courseid=261512194&clazzid=141999697&cpi=404944214&enc=1c0bda49a6b8bc2f458d339d71b59d74&t=1779447413249&pageHeader=8&v=2&hideHead=0>是课程页，禁止使用旧版api
+<https://mooc2-ans.chaoxing.com/mooc2-ans/mycourse/stu?courseid=262231184&clazzid=143695158&cpi=404944214&enc=67001746222677d658a969370c17e7bb&t=1779462135860&pageHeader=0&v=2&hideHead=0>
+<https://mooc1.chaoxing.com/visit/stucoursemiddle?courseid=262231184&clazzid=143695158&cpi=404944214&ismooc2=1&v=2>
