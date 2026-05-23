@@ -1,11 +1,27 @@
-# 忽略所有 build 目录
-build/
-**/build/
-**/build/**
-**/debug/
-**/debug/**
-# 忽略其他常见目录
+# Dependencies
 node_modules/
+
+# Build output
 dist/
-**/release/**
+**/build/
+**/debug/
+**/release/
+src-tauri/target/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
 *.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
